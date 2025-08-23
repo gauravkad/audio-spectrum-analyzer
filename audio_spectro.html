@@ -1,1 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Audio Spectrum Analyzer with Volume Meter, dB & Frequency Labels</title>
+  <style>
+    canvas {
+      width: 100%;
+      height: 420px;
+      background: black;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center;">Live Audio Spectrum Analyzer</h2>
+  <canvas id="spectrum"></canvas>
 
+  <script>
+    const canvas = document.getElementById('spectrum');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = 420;
+
+    async function setupAudio() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+
+      analyser.fftSize = 2048;
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      const timeDomainData = new Uint8Array(analyser.fftSize);
+
+      source.connect(analyser);
+
+      function draw() {
+        requestAnimationFrame(draw);
+
+        analyser.getByteFrequencyData(dataArray);
+        analyser.getByteTimeDomainData(timeDomainData);
+
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw dB scale
+        ctx.fillStyle = 'white';
+        ctx.font = '12px Arial';
+        const dbSteps = [0, -10, -20, -30, -40, -50, -60, -70, -80];
+        dbSteps.forEach((db, i) => {
+          const y = canvas.height - 40 - (i * (canvas.height - 80) / dbSteps.length);
+          ctx.fillText(`${db} dB`, 5, y);
+          ctx.strokeStyle = 'gray';
+          ctx.beginPath();
+          ctx.moveTo(50, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        });
+
+        // Draw frequency bars
+        const barWidth = (canvas.width - 60) / bufferLength * 2.5;
+        let x = 60;
+        for (let i = 0; i < bufferLength; i++) {
+          const amplitude = dataArray[i];
+          const barHeight = (amplitude / 255) * (canvas.height - 80);
+
+          const r = amplitude + 25;
+          const g = 250 * (i / bufferLength);
+          const b = 50;
+
+          ctx.fillStyle = `rgb(${r},${g},${b})`;
+          ctx.fillRect(x, canvas.height - barHeight - 40, barWidth, barHeight);
+          x += barWidth + 1;
+        }
+
+        // Draw frequency labels
+        const sampleRate = audioCtx.sampleRate;
+        const nyquist = sampleRate / 2;
+        const freqStep = nyquist / bufferLength;
+        const labelFreqs = [100, 250, 500, 1000, 2000, 4000, 8000, 16000];
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        labelFreqs.forEach(freq => {
+          const index = Math.floor(freq / freqStep);
+          const x = 60 + index * (barWidth + 1);
+          ctx.fillText(`${freq >= 1000 ? freq / 1000 + 'k' : freq}Hz`, x, canvas.height - 25);
+          ctx.strokeStyle = 'gray';
+          ctx.beginPath();
+          ctx.moveTo(x, canvas.height - 40);
+          ctx.lineTo(x, 0);
+          ctx.stroke();
+        });
+
+        // Volume meter
+        let sumSquares = 0;
+        for (let i = 0; i < timeDomainData.length; i++) {
+          const normalized = (timeDomainData[i] - 128) / 128;
+          sumSquares += normalized * normalized;
+        }
+        const rms = Math.sqrt(sumSquares / timeDomainData.length);
+        const volume = rms * canvas.width;
+
+        ctx.fillStyle = 'lime';
+        ctx.fillRect(0, canvas.height - 20, volume, 10);
+        ctx.strokeStyle = 'white';
+        ctx.strokeRect(0, canvas.height - 20, canvas.width, 10);
+      }
+
+      draw();
+    }
+
+    setupAudio().catch(err => {
+      alert('Microphone access denied or not supported.');
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
