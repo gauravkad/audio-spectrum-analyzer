@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Rainbow Spectrum Analyzer</title>
+  <title>14-Band Rainbow Spectrum Analyzer</title>
   <style>
     canvas {
       width: 100%;
@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h2 style="text-align:center;">Live Audio Spectrum Analyzer with Rainbow LED Bars</h2>
+  <h2 style="text-align:center;">14-Band Rainbow Spectrum Analyzer</h2>
   <canvas id="spectrum"></canvas>
 
   <script>
@@ -58,42 +58,39 @@
           ctx.stroke();
         });
 
-        // Draw frequency bars with rainbow LED effect
-        const barWidth = (canvas.width - 60) / bufferLength * 2.5;
-        let x = 60;
-        for (let i = 0; i < bufferLength; i++) {
-          const amplitude = dataArray[i];
-          const barHeight = (amplitude / 255) * (canvas.height - 80);
-
-          // Rainbow color based on index
-          const hue = (i / bufferLength) * 360;
-          ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-
-          // LED-like rectangular effect
-          ctx.fillRect(x, canvas.height - barHeight - 40, barWidth, barHeight);
-          ctx.strokeStyle = 'black';
-          ctx.strokeRect(x, canvas.height - barHeight - 40, barWidth, barHeight);
-
-          x += barWidth + 1;
-        }
-
-        // Draw frequency labels
+        // Draw 14 rainbow LED bars
         const sampleRate = audioCtx.sampleRate;
         const nyquist = sampleRate / 2;
+        const bandCount = 14;
+        const bandWidth = (canvas.width - 60) / bandCount;
         const freqStep = nyquist / bufferLength;
-        const labelFreqs = [100, 250, 500, 1000, 2000, 4000, 8000, 16000];
-        ctx.fillStyle = 'white';
-        ctx.textAlign = 'center';
-        labelFreqs.forEach(freq => {
-          const index = Math.floor(freq / freqStep);
-          const x = 60 + index * (barWidth + 1);
-          ctx.fillText(`${freq >= 1000 ? freq / 1000 + 'k' : freq}Hz`, x, canvas.height - 25);
-          ctx.strokeStyle = 'gray';
-          ctx.beginPath();
-          ctx.moveTo(x, canvas.height - 40);
-          ctx.lineTo(x, 0);
-          ctx.stroke();
-        });
+
+        for (let band = 0; band < bandCount; band++) {
+          const startFreq = 20 + band * 1500;
+          const endFreq = startFreq + 1500;
+          const startIndex = Math.floor(startFreq / freqStep);
+          const endIndex = Math.min(Math.floor(endFreq / freqStep), bufferLength);
+
+          let sum = 0;
+          for (let i = startIndex; i < endIndex; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / (endIndex - startIndex);
+          const barHeight = (avg / 255) * (canvas.height - 80);
+
+          const hue = (band / bandCount) * 360;
+          ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+          const x = 60 + band * bandWidth;
+          ctx.fillRect(x, canvas.height - barHeight - 40, bandWidth - 4, barHeight);
+          ctx.strokeStyle = 'black';
+          ctx.strokeRect(x, canvas.height - barHeight - 40, bandWidth - 4, barHeight);
+
+          // Frequency label
+          const labelFreq = startFreq + 750;
+          ctx.fillStyle = 'white';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${labelFreq >= 1000 ? (labelFreq / 1000).toFixed(1) + 'k' : labelFreq}Hz`, x + bandWidth / 2 - 2, canvas.height - 25);
+        }
 
         // Volume meter
         let sumSquares = 0;
