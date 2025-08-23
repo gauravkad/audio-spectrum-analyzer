@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Audio Spectrum Analyzer with Volume Meter, dB & Frequency Labels</title>
+  <title>Rainbow Spectrum Analyzer</title>
   <style>
     canvas {
       width: 100%;
@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h2 style="text-align:center;">Live Audio Spectrum Analyzer</h2>
+  <h2 style="text-align:center;">Live Audio Spectrum Analyzer with Rainbow LED Bars</h2>
   <canvas id="spectrum"></canvas>
 
   <script>
@@ -58,19 +58,22 @@
           ctx.stroke();
         });
 
-        // Draw frequency bars
+        // Draw frequency bars with rainbow LED effect
         const barWidth = (canvas.width - 60) / bufferLength * 2.5;
         let x = 60;
         for (let i = 0; i < bufferLength; i++) {
           const amplitude = dataArray[i];
           const barHeight = (amplitude / 255) * (canvas.height - 80);
 
-          const r = amplitude + 25;
-          const g = 250 * (i / bufferLength);
-          const b = 50;
+          // Rainbow color based on index
+          const hue = (i / bufferLength) * 360;
+          ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
 
-          ctx.fillStyle = `rgb(${r},${g},${b})`;
+          // LED-like rectangular effect
           ctx.fillRect(x, canvas.height - barHeight - 40, barWidth, barHeight);
+          ctx.strokeStyle = 'black';
+          ctx.strokeRect(x, canvas.height - barHeight - 40, barWidth, barHeight);
+
           x += barWidth + 1;
         }
 
