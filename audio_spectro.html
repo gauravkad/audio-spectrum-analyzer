@@ -120,7 +120,7 @@
         const logIndex = Math.floor(Math.pow(10, (i / (barCount / logBase)) * logFactor));
         const value = dataArray[Math.min(logIndex, bufferLength - 1)];
         const percent = value / 255;
-        const barHeight = percent * maxHeight;
+        const barHeight = percent * maxHeight * (1.1 * i/barCount);
 
         const hue = i * 360 / barCount;
         ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
