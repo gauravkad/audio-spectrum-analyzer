@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Audio Spectrum Analyzer with Smoothing</title>
+  <title>Audio Spectrum Analyzer with Log Scale & Smoothing</title>
   <style>
     body {
       background-color: black;
@@ -35,7 +35,10 @@
 
 <div id="controls">
   <label for="smoothing">Smoothing: <span id="smoothingValue">0.8</span></label><br>
-  <input type="range" id="smoothing" min="0" max="1" step="0.01" value="0.8">
+  <input type="range" id="smoothing" min="0" max="1" step="0.01" value="0.8"><br><br>
+
+  <label for="logScale">Log Scale: <span id="logScaleValue">1.0</span></label><br>
+  <input type="range" id="logScale" min="0.5" max="2.0" step="0.01" value="1.0">
 </div>
 
 <script>
@@ -43,6 +46,8 @@
   const ctx = canvas.getContext('2d');
   const smoothingSlider = document.getElementById('smoothing');
   const smoothingValueLabel = document.getElementById('smoothingValue');
+  const logScaleSlider = document.getElementById('logScale');
+  const logScaleValueLabel = document.getElementById('logScaleValue');
 
   function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -71,6 +76,10 @@
       smoothingValueLabel.textContent = smoothingSlider.value;
     });
 
+    logScaleSlider.addEventListener('input', () => {
+      logScaleValueLabel.textContent = logScaleSlider.value;
+    });
+
     function draw() {
       requestAnimationFrame(draw);
       analyser.getByteFrequencyData(dataArray);
@@ -80,6 +89,7 @@
       const barCount = Math.floor(canvas.width / 10);
       const barWidth = canvas.width / barCount;
       const maxHeight = canvas.height * 0.8;
+      const logFactor = parseFloat(logScaleSlider.value);
       const logBase = Math.log10(bufferLength);
 
       // Vertical grid lines
@@ -107,8 +117,8 @@
 
       // Spectrum bars
       for (let i = 0; i < barCount; i++) {
-        const logIndex = Math.floor(Math.pow(10, i / (barCount / logBase)));
-        const value = dataArray[logIndex];
+        const logIndex = Math.floor(Math.pow(10, (i / (barCount / logBase)) * logFactor));
+        const value = dataArray[Math.min(logIndex, bufferLength - 1)];
         const percent = value / 255;
         const barHeight = percent * maxHeight;
 
@@ -129,7 +139,7 @@
       ctx.fillStyle = 'white';
       ctx.font = '12px sans-serif';
       for (let i = 0; i < barCount; i += Math.floor(barCount / 10)) {
-        const freq = Math.floor(audioCtx.sampleRate * Math.pow(10, i / (barCount / logBase)) / analyser.fftSize);
+        const freq = Math.floor(audioCtx.sampleRate * Math.pow(10, (i / (barCount / logBase)) * logFactor) / analyser.fftSize);
         ctx.fillText(`${freq}Hz`, i * barWidth, canvas.height - 5);
       }
     }
